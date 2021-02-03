@@ -52,28 +52,32 @@ func handle(conn net.Conn, message string) {
 
 		s := strings.Split(data, " ")
 		if len(s) == 3 {
-			operand1, err1 := strconv.Atoi(s[0])
-			operator := s[1]
-			operand2, err2 := strconv.Atoi(strings.TrimSuffix(s[2], "\n"))
-
-			if err1 == nil && err2 == nil {
-				switch operator {
-				case "+":
-					result := operand1 + operand2
-					fmt.Println(message, result)
-				case "-":
-					result := operand1 - operand2
-					fmt.Println(message, result)
-				case "*":
-					result := operand1 * operand2
-					fmt.Println(message, result)
-				case "/":
-					result := operand1 / operand2
-					fmt.Println(message, result)
-				}
-			}
+			printResult(s, message)
 		}
 
 	}
 	conn.Close()
+}
+
+func printResult(s []string, message string) {
+	operand1, err1 := strconv.Atoi(s[0])
+	operator := s[1]
+	operand2, err2 := strconv.Atoi(strings.TrimSuffix(s[2], "\n"))
+
+	if err1 == nil && err2 == nil {
+		switch operator {
+		case "+":
+			result := operand1 + operand2
+			fmt.Println(message, result)
+		case "-":
+			result := operand1 - operand2
+			fmt.Println(message, result)
+		case "*":
+			result := operand1 * operand2
+			fmt.Println(message, result)
+		case "/":
+			result := operand1 / operand2
+			fmt.Println(message, result)
+		}
+	}
 }
