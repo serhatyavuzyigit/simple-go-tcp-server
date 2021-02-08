@@ -27,7 +27,6 @@ func (c *config) init() {
 	strPortNumber := fmt.Sprintf(":%d", portNumber)
 	c.message = message
 	c.port = strPortNumber
-	//fmt.Println("hello")
 }
 
 func main() {
@@ -61,9 +60,7 @@ func do(c *config) {
 
 	defer dstream.Close()
 	for {
-		fmt.Println("hello man")
 		conn, err := dstream.Accept()
-		fmt.Println("hello man 2")
 		if err != nil {
 			fmt.Println(err)
 			return
