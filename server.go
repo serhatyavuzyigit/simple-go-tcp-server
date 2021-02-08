@@ -18,6 +18,9 @@ type config struct {
 	message string
 }
 
+var activeConnections []net.Conn
+var isPortChanged bool
+
 func (c *config) init() {
 	vpr := viper.New()
 	vpr.SetConfigFile("config.yaml")
@@ -25,6 +28,13 @@ func (c *config) init() {
 	portNumber := vpr.GetInt("port")
 	message := vpr.GetString("message")
 	strPortNumber := fmt.Sprintf(":%d", portNumber)
+
+	if c.port != "" && c.port != strPortNumber {
+		isPortChanged = true
+	} else {
+		isPortChanged = false
+	}
+
 	c.message = message
 	c.port = strPortNumber
 }
@@ -41,6 +51,9 @@ func main() {
 				switch s {
 				case syscall.SIGINT:
 					c.init()
+					if isPortChanged {
+						closeConnections()
+					}
 				}
 			}
 		}
@@ -49,6 +62,14 @@ func main() {
 	do(c)
 
 }
+
+func closeConnections() {
+	for i := 0; i < len(activeConnections); i++ {
+		activeConnections[i].Close()
+	}
+	activeConnections = []net.Conn{}
+}
+
 func do(c *config) {
 	c.init()
 	dstream, err := net.Listen("tcp", c.port)
@@ -73,6 +94,7 @@ func do(c *config) {
 func handle(conn net.Conn, message string) {
 	for {
 		data, err := bufio.NewReader(conn).ReadString('\n')
+		activeConnections = append(activeConnections, conn)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -84,7 +106,7 @@ func handle(conn net.Conn, message string) {
 		}
 
 	}
-	conn.Close()
+
 }
 
 func printResult(s []string, message string) {
