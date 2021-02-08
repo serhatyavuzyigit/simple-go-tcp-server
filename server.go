@@ -4,22 +4,55 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/viper"
 )
 
-func main() {
+type config struct {
+	port    string
+	message string
+}
 
+func (c *config) init() {
 	vpr := viper.New()
 	vpr.SetConfigFile("config.yaml")
 	vpr.ReadInConfig()
 	portNumber := vpr.GetInt("port")
 	message := vpr.GetString("message")
 	strPortNumber := fmt.Sprintf(":%d", portNumber)
+	c.message = message
+	c.port = strPortNumber
+	//fmt.Println("hello")
+}
 
-	dstream, err := net.Listen("tcp", strPortNumber)
+func main() {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT)
+
+	c := &config{}
+	go func() {
+		for {
+			select {
+			case s := <-signalChan:
+				switch s {
+				case syscall.SIGINT:
+					c.init()
+				}
+			}
+		}
+	}()
+
+	do(c)
+
+}
+func do(c *config) {
+	c.init()
+	dstream, err := net.Listen("tcp", c.port)
 
 	if err != nil {
 		fmt.Println(err)
@@ -27,19 +60,17 @@ func main() {
 	}
 
 	defer dstream.Close()
-
 	for {
-
+		fmt.Println("hello man")
 		conn, err := dstream.Accept()
-
+		fmt.Println("hello man 2")
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		go handle(conn, message)
+		go handle(conn, c.message)
 
 	}
-
 }
 
 func handle(conn net.Conn, message string) {
