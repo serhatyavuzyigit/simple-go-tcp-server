@@ -36,7 +36,7 @@ import axios from 'axios';
 
 
 export default {
-  name: 'HelloWorld',
+  name: 'Controller',
   
   data: function() {
     return {
@@ -49,15 +49,11 @@ export default {
     applyChanges: function() {
       var data = {"portNumber": parseInt(this.portNumber), "message": this.message}
 
-      axios({ method: "POST", url: "http://127.0.0.1:8091/apply", data: data, headers: {"content-type": "text/plain" } }).then(result => { 
-          // this.response = result.data;
-          /*eslint-disable*/
-          this.portNumber = "hello";
-          /*eslint-enable*/
+      axios({ method: "POST", url: "http://127.0.0.1:8092/apply", data: data, headers: {"content-type": "text/plain" } }).then(result => { 
 
         }).catch( error => {
             /*eslint-disable*/
-            window.alert(`${error}`);
+            window.alert(`${error} ${this.portNumber} ${this.message} `);
             /*eslint-enable*/
       });
     }
