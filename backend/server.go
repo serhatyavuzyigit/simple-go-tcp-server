@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -22,19 +21,18 @@ type config struct {
 }
 
 type vueData struct {
-	portNumber int    `json:"portNumber"`
-	message    string `json:"message"`
+	PortNumber int    `json:"portNumber"`
+	Message    string `json:"message"`
 }
 
+var c config
 var activeConnections []net.Conn
 var isPortChanged bool
 
-func (c *config) init() {
-	vpr := viper.New()
-	vpr.SetConfigFile("config.yaml")
-	vpr.ReadInConfig()
-	portNumber := vpr.GetInt("port")
-	message := vpr.GetString("message")
+func updateConfig() {
+	viper.ReadInConfig()
+	portNumber := viper.GetInt("port")
+	message := viper.GetString("message")
 	strPortNumber := fmt.Sprintf(":%d", portNumber)
 
 	if c.port != "" && c.port != strPortNumber {
@@ -48,21 +46,23 @@ func (c *config) init() {
 }
 
 func main() {
+	viper.SetConfigFile("config.yaml")
+	viper.ReadInConfig()
 
-	http.HandleFunc("/", apply)
-	http.ListenAndServe(":8090", nil)
+	//http.HandleFunc("/", apply)
+	//http.ListenAndServe(":8092", nil)
 
 	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGHUP)
+	signal.Notify(signalChan, syscall.SIGINT)
 
-	c := &config{}
+	c = config{}
 	go func() {
 		for {
 			select {
 			case s := <-signalChan:
 				switch s {
 				case syscall.SIGINT:
-					c.init()
+					updateConfig()
 					if isPortChanged {
 						closeConnections()
 					}
@@ -71,29 +71,22 @@ func main() {
 		}
 	}()
 
-	do(c)
+	do()
 
 }
 
 func apply(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var comingData vueData
+
+	decoder.Decode(&comingData)
+	viper.Set("message", comingData.Message)
+	viper.Set("port", comingData.PortNumber)
+	viper.WriteConfig()
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
-
-	fmt.Println("girdi hocam")
-	decoder := json.NewDecoder(r.Body)
-	var reqValues vueData
-	fmt.Println(decoder)
-	decoder.Decode(&reqValues)
-	fmt.Println(reqValues.message)
-	fmt.Println(reqValues.portNumber)
-}
-
-func checkError(err error) {
-	if err != nil {
-		log.Panic(err)
-	}
 }
 
 func closeConnections() {
@@ -101,21 +94,32 @@ func closeConnections() {
 		activeConnections[i].Close()
 	}
 	activeConnections = []net.Conn{}
+	newStream, err := net.Listen("tcp", c.port)
+	if err != nil {
+		return
+	}
+	go handleConnections(newStream)
 }
 
-func do(c *config) {
-	c.init()
+func do() {
+	updateConfig()
+	//initializeTcpListener()
 	dstream, err := net.Listen("tcp", c.port)
 
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
 	defer dstream.Close()
+
+	handleConnections(dstream)
+
+}
+
+func handleConnections(l net.Listener) {
 	for {
 
-		conn, err := dstream.Accept()
+		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println(err)
 			return
