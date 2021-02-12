@@ -167,17 +167,3 @@ func printResult(s []string, message string) {
 		fmt.Println(message, result)
 	}
 }
-
-func apply(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var comingData vueData
-
-	decoder.Decode(&comingData)
-	viper.Set("message", comingData.Message)
-	viper.Set("port", comingData.PortNumber)
-	viper.WriteConfig()
-
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(http.StatusOK)
-}
