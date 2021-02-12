@@ -47,10 +47,9 @@ func updateConfig() {
 
 func main() {
 	viper.SetConfigFile("config.yaml")
-	viper.ReadInConfig()
 
-	//http.HandleFunc("/", apply)
-	//http.ListenAndServe(":8092", nil)
+	http.HandleFunc("/", apply)
+	http.ListenAndServe(":8092", nil)
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT)
@@ -65,6 +64,7 @@ func main() {
 					updateConfig()
 					if isPortChanged {
 						closeConnections()
+						openNewStream()
 					}
 				}
 			}
@@ -94,6 +94,10 @@ func closeConnections() {
 		activeConnections[i].Close()
 	}
 	activeConnections = []net.Conn{}
+
+}
+
+func openNewStream() {
 	newStream, err := net.Listen("tcp", c.port)
 	if err != nil {
 		return
@@ -103,7 +107,6 @@ func closeConnections() {
 
 func do() {
 	updateConfig()
-	//initializeTcpListener()
 	dstream, err := net.Listen("tcp", c.port)
 
 	if err != nil {
@@ -111,14 +114,12 @@ func do() {
 		return
 	}
 	defer dstream.Close()
-
 	handleConnections(dstream)
 
 }
 
 func handleConnections(l net.Listener) {
 	for {
-
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println(err)
@@ -165,4 +166,18 @@ func printResult(s []string, message string) {
 		}
 		fmt.Println(message, result)
 	}
+}
+
+func apply(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var comingData vueData
+
+	decoder.Decode(&comingData)
+	viper.Set("message", comingData.Message)
+	viper.Set("port", comingData.PortNumber)
+	viper.WriteConfig()
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
 }
