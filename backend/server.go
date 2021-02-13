@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -46,10 +47,6 @@ func updateConfig() {
 }
 
 func main() {
-	viper.SetConfigFile("config.yaml")
-
-	http.HandleFunc("/", apply)
-	http.ListenAndServe(":8092", nil)
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT)
@@ -71,22 +68,53 @@ func main() {
 		}
 	}()
 
-	do()
+	viper.SetConfigFile("config.yaml")
+	updateConfig()
+
+	http.HandleFunc("/", apply)
+	fmt.Println("hello world")
+	if err := http.ListenAndServe(":8090", nil); err != nil {
+		log.Fatal(err)
+	}
 
 }
 
 func apply(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var comingData vueData
 
-	decoder.Decode(&comingData)
-	viper.Set("message", comingData.Message)
-	viper.Set("port", comingData.PortNumber)
-	viper.WriteConfig()
-
+	if r.URL.Path != "/" {
+		http.Error(w, "404 not found.", http.StatusNotFound)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
+	switch r.Method {
+	case "GET":
+		strPort := c.port
+		ind := strings.LastIndex(strPort, ":")
+		intPort, err := strconv.Atoi(string(strPort[ind+1:]))
+
+		if err != nil {
+			return
+		}
+
+		var data vueData
+		data = vueData{PortNumber: intPort, Message: c.message}
+
+		do()
+		json.NewEncoder(w).Encode(data)
+	case "POST":
+		decoder := json.NewDecoder(r.Body)
+		var comingData vueData
+
+		decoder.Decode(&comingData)
+		viper.Set("message", comingData.Message)
+		viper.Set("port", comingData.PortNumber)
+		viper.WriteConfig()
+
+	default:
+		fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
+	}
 }
 
 func closeConnections() {
@@ -106,7 +134,7 @@ func openNewStream() {
 }
 
 func do() {
-	updateConfig()
+	fmt.Println("hello man")
 	dstream, err := net.Listen("tcp", c.port)
 
 	if err != nil {
