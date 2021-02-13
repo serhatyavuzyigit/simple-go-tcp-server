@@ -44,12 +44,27 @@ export default {
     message: '',
   }
   },
-
+  created () {
+    // fetch the data when the view is created and the data is
+    // already being observed
+    this.getInitialValues()
+  },
   methods: {
     applyChanges: function() {
       var data = {"portNumber": parseInt(this.portNumber), "message": this.message}
 
-      axios({ method: "POST", url: "http://127.0.0.1:8092/apply", data: data, headers: {"content-type": "text/plain" } }).then(result => { 
+      axios({ method: "POST", url: "http://localhost:8093/", data: data, headers: {"content-type": "text/plain" } }).then(result => { 
+
+        }).catch( error => {
+            /*eslint-disable*/
+            window.alert(`${error} ${this.portNumber} ${this.message} `);
+            /*eslint-enable*/
+      });
+    },
+    getInitialValues: function() {
+      axios({ method: "GET", url: "http://localhost:8093/", headers: {"content-type": "text/plain" } }).then(result => { 
+            this.portNumber = result.data.portNumber;
+            this.message = result.data.message;
 
         }).catch( error => {
             /*eslint-disable*/
