@@ -53,7 +53,7 @@ export default {
     applyChanges: function() {
       var data = {"portNumber": parseInt(this.portNumber), "message": this.message}
 
-      axios({ method: "POST", url: "http://localhost:8093/", data: data, headers: {"content-type": "text/plain" } }).then(result => { 
+      axios({ method: "POST", url: "http://localhost:8090/", data: data, headers: {"content-type": "text/plain" } }).then(result => { 
 
         }).catch( error => {
             /*eslint-disable*/
@@ -62,7 +62,7 @@ export default {
       });
     },
     getInitialValues: function() {
-      axios({ method: "GET", url: "http://localhost:8093/", headers: {"content-type": "text/plain" } }).then(result => { 
+      axios({ method: "GET", url: "http://localhost:8090/", headers: {"content-type": "text/plain" } }).then(result => { 
             this.portNumber = result.data.portNumber;
             this.message = result.data.message;
 
