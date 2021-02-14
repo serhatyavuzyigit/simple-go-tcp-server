@@ -3,7 +3,7 @@
 ## running the project
 
 ### backend
-    - navigate command line to the frontend directory with "cd backend"
+    - navigate command line to the backend directory with "cd backend"
     - run the server with "go run server.go"
 
 ### frontend
