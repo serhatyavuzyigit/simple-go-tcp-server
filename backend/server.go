@@ -30,6 +30,9 @@ var c config
 var activeConnections []net.Conn
 var isPortChanged bool
 
+/*
+	updates the config struct for current config values
+*/
 func updateConfig() {
 	viper.ReadInConfig()
 	portNumber := viper.GetInt("port")
@@ -46,12 +49,109 @@ func updateConfig() {
 	c.port = strPortNumber
 }
 
-func main() {
+/*
+	opens a new listener for current port number
+*/
+func openNewStream() {
+	newStream, err := net.Listen("tcp", c.port)
+	if err != nil {
+		return
+	}
+	go handleConnections(newStream)
+}
 
+/*
+	gets the data from active connection
+*/
+func handle(conn net.Conn, message string) {
+	for {
+		data, err := bufio.NewReader(conn).ReadString('\n')
+		activeConnections = append(activeConnections, conn)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		s := strings.Split(data, " ")
+		if len(s) == 3 {
+			printResult(s, message)
+		}
+
+	}
+
+}
+
+/*
+	determining the result for given string array and message
+	after that prints the result
+*/
+func printResult(s []string, message string) {
+	operand1, err1 := strconv.Atoi(s[0])
+	operator := s[1]
+	operand2, err2 := strconv.Atoi(strings.TrimSuffix(s[2], "\n"))
+	if err1 == nil && err2 == nil {
+		var result int = 0
+		switch operator {
+		case "+":
+			result = operand1 + operand2
+		case "-":
+			result = operand1 - operand2
+		case "*":
+			result = operand1 * operand2
+		case "/":
+			result = operand1 / operand2
+		}
+		fmt.Println(message, result)
+	}
+}
+
+/*
+	closes all active connections
+*/
+func closeConnections() {
+	for i := 0; i < len(activeConnections); i++ {
+		activeConnections[i].Close()
+	}
+	activeConnections = []net.Conn{}
+
+}
+
+/*
+	handle the connections for given listener
+*/
+func handleConnections(l net.Listener) {
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		go handle(conn, c.message)
+
+	}
+}
+
+/*
+	opens a connection for the first page load
+*/
+func openInitialConnection() {
+	dstream, err := net.Listen("tcp", c.port)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer dstream.Close()
+	handleConnections(dstream)
+
+}
+
+/*
+	creating a channel for signal handling
+*/
+func createSignalChannel() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT)
-
-	c = config{}
 	go func() {
 		for {
 			select {
@@ -67,18 +167,11 @@ func main() {
 			}
 		}
 	}()
-
-	viper.SetConfigFile("config.yaml")
-	updateConfig()
-
-	http.HandleFunc("/", apply)
-	fmt.Println("hello world")
-	if err := http.ListenAndServe(":8090", nil); err != nil {
-		log.Fatal(err)
-	}
-
 }
 
+/*
+	apply needed operations for given request from frontend
+*/
 func apply(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Path != "/" {
@@ -101,7 +194,7 @@ func apply(w http.ResponseWriter, r *http.Request) {
 		var data vueData
 		data = vueData{PortNumber: intPort, Message: c.message}
 
-		do()
+		openInitialConnection()
 		json.NewEncoder(w).Encode(data)
 	case "POST":
 		decoder := json.NewDecoder(r.Body)
@@ -117,81 +210,22 @@ func apply(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func closeConnections() {
-	for i := 0; i < len(activeConnections); i++ {
-		activeConnections[i].Close()
-	}
-	activeConnections = []net.Conn{}
+/*
+	main function of server.go
+*/
+func main() {
 
-}
+	c = config{}
 
-func openNewStream() {
-	newStream, err := net.Listen("tcp", c.port)
-	if err != nil {
-		return
-	}
-	go handleConnections(newStream)
-}
+	createSignalChannel()
 
-func do() {
-	fmt.Println("hello man")
-	dstream, err := net.Listen("tcp", c.port)
+	// setting viper fon config reading
+	viper.SetConfigFile("config.yaml")
+	updateConfig()
 
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer dstream.Close()
-	handleConnections(dstream)
-
-}
-
-func handleConnections(l net.Listener) {
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		go handle(conn, c.message)
-
-	}
-}
-
-func handle(conn net.Conn, message string) {
-	for {
-		data, err := bufio.NewReader(conn).ReadString('\n')
-		activeConnections = append(activeConnections, conn)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		s := strings.Split(data, " ")
-		if len(s) == 3 {
-			printResult(s, message)
-		}
-
+	http.HandleFunc("/", apply)
+	if err := http.ListenAndServe(":8090", nil); err != nil {
+		log.Fatal(err)
 	}
 
-}
-
-func printResult(s []string, message string) {
-	operand1, err1 := strconv.Atoi(s[0])
-	operator := s[1]
-	operand2, err2 := strconv.Atoi(strings.TrimSuffix(s[2], "\n"))
-	if err1 == nil && err2 == nil {
-		var result int = 0
-		switch operator {
-		case "+":
-			result = operand1 + operand2
-		case "-":
-			result = operand1 - operand2
-		case "*":
-			result = operand1 * operand2
-		case "/":
-			result = operand1 / operand2
-		}
-		fmt.Println(message, result)
-	}
 }
