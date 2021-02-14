@@ -151,13 +151,13 @@ func openInitialConnection() {
 */
 func createSignalChannel() {
 	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT)
+	signal.Notify(signalChan, syscall.SIGHUP)
 	go func() {
 		for {
 			select {
 			case s := <-signalChan:
 				switch s {
-				case syscall.SIGINT:
+				case syscall.SIGHUP:
 					updateConfig()
 					if isPortChanged {
 						closeConnections()
